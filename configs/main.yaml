@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+  - dataset: Beauty
+  - logging: wandb
+  - override hydra/launcher: rfai
+
+experiment_id: test
+seed: 0

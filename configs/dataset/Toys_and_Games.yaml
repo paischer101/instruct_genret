@@ -1,0 +1,53 @@
+# data preprocessing
+name: Toys_and_Games
+type: Amazon
+saved_id_path: Toys_and_Games_semantic_id.pkl
+max_items_per_seq: 100000
+cold_start: False
+features_needed: ['title', 'price', 'brand', 'feature', 'categories', 'description']
+content_model: sentence-t5-xxl
+
+RQ-VAE:
+  original_impl: False
+  pca: False
+  standardize: True
+  optimizer: AdamW
+  batch_size: 2048
+  epochs: 8000
+  lr: 0.001
+  beta: 0.25
+  input_dim: 768
+  hidden_dim:
+    - 768
+    - 512
+    - 256
+  latent_dim: 128
+  num_layers: 3
+  dropout: 0.1
+  code_book_size: 256
+  max_seq_len: 256
+  val_ratio: 0.05
+
+TIGER:
+  n_positions: 258
+  exp_id: 2
+  T5:
+    encoder_layers: 4
+    decoder_layers: 4
+    d_model: 128
+    d_ff: 1024
+    num_heads: 6
+    d_kv: 64
+    dropout_rate: 0.1
+    initialize_pretrained: False
+    activation_function: "relu"
+    feed_forward_proj: "relu"
+  trainer:
+    steps: 100000
+    lr: 0.0003
+    patience: 15
+    scheduler: "cosine"
+    warmup_steps: 5000
+    weight_decay: 0.035
+    batch_size: 256
+    eval_batch_size: 32
