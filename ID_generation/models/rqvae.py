@@ -6,6 +6,7 @@ from torch.nn import functional as F
 from .layers import MLP
 
 class RQVAE(nn.Module):
+    # original paper / original implementation
     def __init__(self, input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout,
                  decay=0.99, loss_type='mse', latent_loss_weight=0.25,
                  bottleneck_type='rq', **kwargs):

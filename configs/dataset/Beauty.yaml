@@ -4,7 +4,7 @@ name: Beauty
 saved_id_path: Beauty_semantic_id.pkl
 max_items_per_seq: 100000
 cold_start: False
-features_needed: ['title', 'price', 'brand', 'feature', 'categories', 'description']
+features_needed: ['title', 'price', 'brand', 'feature', 'categories']
 content_model: sentence-t5-xxl
 
 RQ-VAE:
@@ -15,6 +15,7 @@ RQ-VAE:
   batch_size: 2048
   epochs: 8000
   lr: 0.001
+  wd: 0.1
   beta: 0.25
   input_dim: 768
   hidden_dim:
@@ -24,6 +25,8 @@ RQ-VAE:
   latent_dim: 128
   num_layers: 3
   dropout: 0.1
+  flops_reg: 0.0
+  use_normalization: True
   code_book_size: 256
   max_seq_len: 256
   val_ratio: 0.05

@@ -53,10 +53,10 @@ def train_tiger(config, device, writer):
         d_model=t5_config['d_model'],
         d_ff=t5_config['d_ff'],
         num_heads=t5_config['num_heads'],
-        d_kv=t5_config['d_kv'],
+        d_kv=t5_config['d_kv'],  # Size of the key, query, value projections per attention head.
         dropout_rate=t5_config['dropout_rate'],
         activation_function=t5_config['activation_function'],
-        vocab_size=3026,
+        vocab_size=3026,  # liu: 1024 + 2000 + 1
         pad_token_id=0,
         eos_token_id=3025,
         decoder_start_token_id=0,
@@ -167,7 +167,7 @@ def train_tiger(config, device, writer):
         if (best_epoch + trainer_config["patience"] < epoch) and global_step > trainer_config["warmup_steps"]:
             break
     print("Testing...")
-    model.load_state_dict(torch.load(f"./{output_path}/results/tiger_best_exp_{dataset}_{seed}.pt"))
+    model.load_state_dict(torch.load(f"./outputs/{output_path}/results/tiger_best_exp_{dataset}_{seed}.pt"))
     if cold_start:
         recall_5,recall_10,ndcg_5,ndcg_10, eval_loss = evaluate_cold_start(model, test_dataloader, test_unseen_semantic_ids, device, num_beams=30)
     else:

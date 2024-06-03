@@ -19,19 +19,21 @@ DEFAULT_CONFIG = {
         'batch_size': 2048,
         'epochs': 5000,
         'lr': 0.001,
+        'wd': 0.01,
         'beta': 0.25,
         'input_dim': 64,
         'hidden_dim': [2048, 1024, 512, 256],
         'latent_dim': 128,
         'num_layers': 3,
         'dropout': 0.2,
+        'flops_reg': 0,
         'code_book_size': 256, # 'code_book_size': [4, 16, 256]
         'max_seq_len': 256,
         'val_ratio': 0.05,
-        'batch_norm': True,
         'standardize': True
     }
 }
+
 
 def train_rqvae(model, x, device, writer, config):
     model.to(device)
@@ -40,11 +42,13 @@ def train_rqvae(model, x, device, writer, config):
     num_epochs = config["epochs"]
     beta = config["beta"]
     lr = config['lr']
+    wd = config['wd']
+    flops_reg = config['flops_reg']
     global_step = 0
     if not config['original_impl']:
         model.generate_codebook(torch.Tensor(x).to(device), device)
     if hasattr(torch.optim, config['optimizer']):
-        optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
+        optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr, weight_decay=wd)  # liu TODO.
     else:
         raise NotImplementedError(f"Specified Optimizer {config['optimizer']} not implemented!!") 
     trainset, validationset = train_test_split(x, test_size=0.05, random_state=42)
@@ -71,13 +75,15 @@ def train_rqvae(model, x, device, writer, config):
                 quantization_loss = torch.Tensor([0])
                 embedding_loss = torch.Tensor([0])
             else:
-                recon_x, r, e, count, indices = model(x_batch)
+                recon_x, r, e, count, indices, flops_loss = model(x_batch, return_flops=True)
                 reconstruction_mse_loss = F.mse_loss(recon_x, x_batch, reduction='mean')
                 embedding_loss = F.mse_loss(r.detach(),e,reduction='mean')
                 commitment_loss = beta*F.mse_loss(r,e.detach(),reduction='mean')
                 quantization_loss = embedding_loss + commitment_loss 
-                loss = reconstruction_mse_loss + quantization_loss
+                loss = reconstruction_mse_loss + quantization_loss + flops_reg * flops_loss
             loss.backward()
+            grad_clip = 1.0
+            _grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
 
             total_loss += loss.item()
@@ -93,6 +99,8 @@ def train_rqvae(model, x, device, writer, config):
                     "pretrain/quantization_loss": quantization_loss.detach().item(),
                     "pretrain/embedding_loss": embedding_loss.detach().item(),
                     "pretrain/commitment_loss": commitment_loss.detach().item(),
+                    "pretrain/flops_loss": flops_loss.item(),
+                    "pretrain/grad_norm": _grad_norm,
                     "pretrain/step": global_step,
                     "pretrain/epoch": epoch+1
                 }
@@ -107,6 +115,7 @@ def train_rqvae(model, x, device, writer, config):
             total_val_count = 0
             total_val_emb_loss = 0.0
             total_val_comm_loss = 0.0
+            total_val_flops_loss = 0.0
             with torch.no_grad():
                 for batch in val_dataloader:
                     x_batch = batch[0]
@@ -118,7 +127,7 @@ def train_rqvae(model, x, device, writer, config):
                         quantization_loss = torch.Tensor([0])
                         embedding_loss = torch.Tensor([0])
                     else:
-                        recon_x,r,e, count, indices = model(x_batch)
+                        recon_x,r,e, count, indices, flops_loss = model(x_batch, return_flops=True)
                         reconstruction_mse_loss = F.mse_loss(recon_x, x_batch, reduction='mean')
                         embedding_loss = F.mse_loss(r,e,reduction='mean')
                         commitment_loss = beta*F.mse_loss(r,e,reduction='mean')
@@ -128,6 +137,7 @@ def train_rqvae(model, x, device, writer, config):
                     total_val_rec_loss += reconstruction_mse_loss.item()
                     total_val_quant_loss += quantization_loss.item()
                     total_val_count += count
+                    total_val_flops_loss += flops_loss
 
             if isinstance(writer, WandbManager):
                 codebook_indices = { f"pretrain/eval_indices_{i}": indices[:, i] for i in range(indices.size(1)) }
@@ -136,6 +146,7 @@ def train_rqvae(model, x, device, writer, config):
                     "pretrain/eval_quant_loss": total_val_quant_loss/ len(val_dataloader),
                     "pretrain/eval_embedding_loss": total_val_emb_loss / len(val_dataloader),
                     "pretrain/eval_commitment_loss": total_val_comm_loss / len(val_dataloader),
+                    "pretrain/eval_flops_loss": total_val_flops_loss / len(val_dataloader),
                     "pretrain/epoch_unused_codebook": total_count/ len(dataloader)
                 }
                 writer.log({ **logs, **codebook_indices })
@@ -175,8 +186,10 @@ def train(config, device, writer):
     num_levels = model_config['num_layers']
     codebook_size = model_config['code_book_size']
     dropout = model_config['dropout']
+    use_normalization = model_config['use_normalization']
     if model_config['standardize']:
         embeddings = StandardScaler().fit_transform(embeddings)
+        # Standardize features by removing the mean and scaling to unit variance.
     if model_config['pca']:
         pca = PCA(n_components=input_size, whiten=True)
         embeddings = pca.fit_transform(embeddings)
@@ -184,7 +197,7 @@ def train(config, device, writer):
         from .models.rqvae import RQVAE
     else:
         from .models.RQ_VAE import RQVAE
-    rqvae = RQVAE(input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout)
+    rqvae = RQVAE(input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout, use_normalization)
     train_rqvae(rqvae, embeddings, device, writer, model_config)
     rqvae.to(device)
     embeddings_tensor = torch.Tensor(embeddings).to(device)
@@ -227,6 +240,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=rq_vae_config['batch_size'], help="Batch size")
     parser.add_argument("--epochs", type=int, default=rq_vae_config['epochs'], help="Number of epochs")
     parser.add_argument("--lr", type=float, default=rq_vae_config['lr'], help="Learning rate")
+    parser.add_argument("--wd", type=float, default=rq_vae_config['wd'], help="Weight Decay")
     parser.add_argument("--beta", type=float, default=rq_vae_config['beta'], help="Beta")
     parser.add_argument("--input_dim", type=int, default=rq_vae_config['input_dim'], help="Input dimension")
     parser.add_argument("--hidden_dim", type=json.loads, default=rq_vae_config['hidden_dim'], help="Hidden dimensions")

@@ -1,4 +1,4 @@
 writer: wandb
-mode: online
-entity: instruct_genret
-project: genrec
+mode: disabled
+entity: icl_peft_genret
+project: playground

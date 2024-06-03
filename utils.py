@@ -1,5 +1,7 @@
 import requests
 import os
+import copy
+from omegaconf import OmegaConf
 from torch.utils.data import Dataset
 
 class CustomDataset(Dataset):
@@ -29,18 +31,20 @@ class WandbManager:
             return False
         return importlib.util.find_spec("wandb") is not None
     
-    def setup(self, args, **kwargs):
+    def setup(self, args, configs, **kwargs):
         if not isinstance(args, dict):
             args = args.__dict__
         project_name = args.get("project", "debug")
 
-        combined_dict = { **args, **kwargs}
+        args_dict = OmegaConf.to_container(configs)
         self._wandb.init(
             # set the wandb project where this run will be logged
             project=project_name,
             entity=args.get("entity", None),
+            mode=args.get("mode", "disabled"),
+            name=args.get("experiment_id", "test"),
             # track hyperparameters and run metadata
-            config=combined_dict
+            config=args_dict,
         )
         self._initialized = True
 
@@ -65,17 +69,19 @@ def download_file(url, path):
         print(f"Failed to download {os.path.basename(path)}")
 
 def setup_logging(config):
-    logger_conf = config['logging']
-    model_config = config['dataset']
+    dict_config = dict(config)
+    logger_conf = dict_config['logging']
+    model_config = dict_config['dataset']
     if logger_conf["writer"] == "tensorboard":
         from torch.utils.tensorboard import SummaryWriter
-        writer = SummaryWriter(log_dir=f"./logs/tiger_exp{config['exp_id']}")
+        writer = SummaryWriter(log_dir=f"./logs/tiger_exp{dict_config['exp_id']}")
     elif logger_conf["writer"] == "wandb":
         if logger_conf['mode'] == "offline":
             os.environ['WANDB_MODE'] = "offline"
         from utils import WandbManager
         writer = WandbManager()
-        writer.setup({ **logger_conf, **model_config, 'experiment_id': config['experiment_id'], 'seed': config['seed'] })
+        writer.setup({**logger_conf, 'experiment_id': dict_config['experiment_id']}, configs=config)
+        # writer.setup({ **logger_conf, **model_config, 'experiment_id': dict_config['experiment_id'], 'seed': dict_config['seed'] }, configs=config)
     else:
         raise NotImplementedError("Specified writer not recognized!")
     return writer

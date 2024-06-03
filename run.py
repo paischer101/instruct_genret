@@ -42,7 +42,7 @@ def main(config: DictConfig) -> None:
             print(f"{filename} not found, downloading...")
             download_file(url, filepath)
     preprocessing(config['dataset'], require_attributes=True)
-    writer = setup_logging(dict(config))
+    writer = setup_logging(config)
     train_config = { **config['dataset'], **{k: v for k, v in config.items() if k not in ['logging', 'dataset']} }
     features_used = "_".join(train_config['features_needed'])
     if not train_config['RQ-VAE']['original_impl']:
