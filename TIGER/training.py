@@ -53,10 +53,10 @@ def train_tiger(config, device, writer):
         d_model=t5_config['d_model'],
         d_ff=t5_config['d_ff'],
         num_heads=t5_config['num_heads'],
-        d_kv=t5_config['d_kv'],  # Size of the key, query, value projections per attention head.
+        d_kv=t5_config['d_kv'],
         dropout_rate=t5_config['dropout_rate'],
         activation_function=t5_config['activation_function'],
-        vocab_size=3026,  # liu: 1024 + 2000 + 1
+        vocab_size=3026,
         pad_token_id=0,
         eos_token_id=3025,
         decoder_start_token_id=0,

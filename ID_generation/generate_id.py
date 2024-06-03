@@ -185,10 +185,8 @@ def train(config, device, writer):
     num_levels = model_config['num_layers']
     codebook_size = model_config['code_book_size']
     dropout = model_config['dropout']
-    use_normalization = model_config['use_normalization']
     if model_config['standardize']:
         embeddings = StandardScaler().fit_transform(embeddings)
-        # Standardize features by removing the mean and scaling to unit variance.
     if model_config['pca']:
         pca = PCA(n_components=input_size, whiten=True)
         embeddings = pca.fit_transform(embeddings)
@@ -196,7 +194,7 @@ def train(config, device, writer):
         from .models.rqvae import RQVAE
     else:
         from .models.RQ_VAE import RQVAE
-    rqvae = RQVAE(input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout, use_normalization)
+    rqvae = RQVAE(input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout)
     train_rqvae(rqvae, embeddings, device, writer, model_config)
     rqvae.to(device)
     embeddings_tensor = torch.Tensor(embeddings).to(device)

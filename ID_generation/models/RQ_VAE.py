@@ -3,13 +3,12 @@ import torch.nn.functional as F
 from .layers import MLP, QuantizationLayer
 
 class RQVAE(nn.Module):
-    # jiacheng's
-    def __init__(self, input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout, use_normalization):
+    def __init__(self, input_size, hidden_sizes, latent_size, num_levels, codebook_size, dropout):
         super(RQVAE, self).__init__()
-        self.encoder = MLP(input_size, hidden_sizes, latent_size, dropout=dropout, use_normalization=use_normalization)
+        self.encoder = MLP(input_size, hidden_sizes, latent_size, dropout=dropout)
         self.quantization_layer = QuantizationLayer(num_levels, codebook_size, latent_size)
         hidden_sizes.reverse()
-        self.decoder = MLP(latent_size, hidden_sizes, input_size, dropout=dropout, use_normalization=use_normalization)
+        self.decoder = MLP(latent_size, hidden_sizes, input_size, dropout=dropout)
 
     def forward(self, x, return_flops=False):
         encoded = self.encoder(x)
