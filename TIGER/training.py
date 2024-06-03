@@ -65,8 +65,8 @@ def train_tiger(config, device, writer):
     )
     
     output_path = str(uuid.uuid4()).split('-')[0]
-    os.makedirs(f"./{output_path}/logs", exist_ok=True)
-    os.makedirs(f"./{output_path}/results", exist_ok=True)
+    os.makedirs(f"./outputs/{output_path}/logs", exist_ok=True)
+    os.makedirs(f"./outputs/{output_path}/results", exist_ok=True)
     
     # Initialize the model with the custom configuration
     model = T5ForConditionalGeneration(config=model_config).to(device)
@@ -158,8 +158,23 @@ def train_tiger(config, device, writer):
                 best_ndcg_10 = ndcg_10
                 best_epoch = epoch
                 model.to('cpu')
-                torch.save(model.state_dict(), f"./{output_path}/results/tiger_best_exp_{dataset}_{seed}.pt")
+                torch.save(model.state_dict(), f"./outputs/{output_path}/results/tiger_best_exp_{dataset}_{seed}.pt")
                 model.to(device)
+            # Testing as well, to see if it is overfitting issues or test performance never goes up
+            if cold_start:
+                recall_5,recall_10,ndcg_5,ndcg_10, eval_loss = evaluate_cold_start(model, test_dataloader, test_unseen_semantic_ids, device, num_beams=30)
+            else:
+                recall_5,recall_10,ndcg_5,ndcg_10, eval_loss = evaluate(model, test_dataloader, device, num_beams=30)
+            if isinstance(writer, WandbManager):
+                logs = {
+                    'test/loss': eval_loss,
+                    'test/Recall@5': recall_5,
+                    'test/Recall@10': recall_10,
+                    'test/NDCG@5': ndcg_5,
+                    'test/NDCG@10': ndcg_10
+                }
+                writer.log(logs)
+
         #if (epoch + 1) % 20 == 0:
         #    model.to('cpu')
         #    torch.save(model.state_dict(), f"./results/tiger_epoch_{epoch+1}_exp{config['exp_id']}.pt")
