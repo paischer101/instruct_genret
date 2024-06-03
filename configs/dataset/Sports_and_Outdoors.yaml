@@ -12,10 +12,11 @@ RQ-VAE:
   pca: False
   standardize: True
   optimizer: AdamW
+  weight_decay: 0.01
   batch_size: 2048
   epochs: 8000
   lr: 0.0001  # 0.001
-  wd: 0.1
+  weight_decay: 0.1
   beta: 0.25
   input_dim: 768
   hidden_dim:
@@ -26,7 +27,6 @@ RQ-VAE:
   num_layers: 3
   dropout: 0.1
   flops_reg: 0.0
-  use_normalization: True
   code_book_size: 256
   max_seq_len: 256
   val_ratio: 0.05

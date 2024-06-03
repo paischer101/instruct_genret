@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 import argparse
 import pickle
 import gc
-from utils import WandbManager
+from utils import WandbManager, set_weight_decay
 
 DEFAULT_CONFIG = {
     'dataset': 'Sports_and_Outdoors',
@@ -19,14 +19,12 @@ DEFAULT_CONFIG = {
         'batch_size': 2048,
         'epochs': 5000,
         'lr': 0.001,
-        'wd': 0.01,
         'beta': 0.25,
         'input_dim': 64,
         'hidden_dim': [2048, 1024, 512, 256],
         'latent_dim': 128,
         'num_layers': 3,
         'dropout': 0.2,
-        'flops_reg': 0,
         'code_book_size': 256, # 'code_book_size': [4, 16, 256]
         'max_seq_len': 256,
         'val_ratio': 0.05,
@@ -42,13 +40,14 @@ def train_rqvae(model, x, device, writer, config):
     num_epochs = config["epochs"]
     beta = config["beta"]
     lr = config['lr']
-    wd = config['wd']
     flops_reg = config['flops_reg']
     global_step = 0
     if not config['original_impl']:
         model.generate_codebook(torch.Tensor(x).to(device), device)
     if hasattr(torch.optim, config['optimizer']):
-        optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr, weight_decay=wd)  # liu TODO.
+        optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
+        if 'weight_decay' in optimizer.param_groups[0]:
+            set_weight_decay(optimizer, config['weight_decay'])
     else:
         raise NotImplementedError(f"Specified Optimizer {config['optimizer']} not implemented!!") 
     trainset, validationset = train_test_split(x, test_size=0.05, random_state=42)
@@ -240,7 +239,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=rq_vae_config['batch_size'], help="Batch size")
     parser.add_argument("--epochs", type=int, default=rq_vae_config['epochs'], help="Number of epochs")
     parser.add_argument("--lr", type=float, default=rq_vae_config['lr'], help="Learning rate")
-    parser.add_argument("--wd", type=float, default=rq_vae_config['wd'], help="Weight Decay")
     parser.add_argument("--beta", type=float, default=rq_vae_config['beta'], help="Beta")
     parser.add_argument("--input_dim", type=int, default=rq_vae_config['input_dim'], help="Input dimension")
     parser.add_argument("--hidden_dim", type=json.loads, default=rq_vae_config['hidden_dim'], help="Hidden dimensions")
