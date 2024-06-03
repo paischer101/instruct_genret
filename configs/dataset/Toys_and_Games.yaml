@@ -32,8 +32,8 @@ TIGER:
   n_positions: 258
   exp_id: 2
   T5:
-    encoder_layers: 4
-    decoder_layers: 4
+    encoder_layers: 6
+    decoder_layers: 6
     d_model: 128
     d_ff: 1024
     num_heads: 6
