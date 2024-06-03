@@ -12,6 +12,7 @@ RQ-VAE:
   pca: False
   standardize: True
   optimizer: AdamW
+  weight_decay: 0.01
   batch_size: 2048
   epochs: 8000
   lr: 0.001

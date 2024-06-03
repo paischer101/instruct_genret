@@ -83,3 +83,7 @@ def setup_logging(config):
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+    
+def set_weight_decay(optimizer, weight_decay):
+    for param_group in optimizer.param_groups:
+        param_group['weight_decay'] = weight_decay

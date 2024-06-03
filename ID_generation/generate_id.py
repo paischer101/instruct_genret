@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 import argparse
 import pickle
 import gc
-from utils import WandbManager
+from utils import WandbManager, set_weight_decay
 
 DEFAULT_CONFIG = {
     'dataset': 'Sports_and_Outdoors',
@@ -45,6 +45,8 @@ def train_rqvae(model, x, device, writer, config):
         model.generate_codebook(torch.Tensor(x).to(device), device)
     if hasattr(torch.optim, config['optimizer']):
         optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
+        if 'weight_decay' in optimizer.param_groups[0]:
+            set_weight_decay(optimizer, config['weight_decay'])
     else:
         raise NotImplementedError(f"Specified Optimizer {config['optimizer']} not implemented!!") 
     trainset, validationset = train_test_split(x, test_size=0.05, random_state=42)
