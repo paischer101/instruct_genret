@@ -16,7 +16,6 @@ RQ-VAE:
   batch_size: 2048
   epochs: 8000
   lr: 0.001
-  weight_decay: 0.1
   beta: 0.25
   input_dim: 768
   hidden_dim:
